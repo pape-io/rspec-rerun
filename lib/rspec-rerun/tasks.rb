@@ -37,7 +37,6 @@ module RSpec
                     end
 
           # Parse environment variables
-          options[:pattern] ||= ENV['RSPEC_RERUN_PATTERN'] if ENV['RSPEC_RERUN_PATTERN']
           options[:tag] ||= ENV['RSPEC_RERUN_TAG'] if ENV['RSPEC_RERUN_TAG']
           options[:retry_count] ||= ENV['RSPEC_RERUN_RETRY_COUNT'] if ENV['RSPEC_RERUN_RETRY_COUNT']
           options[:verbose] = (ENV['RSPEC_RERUN_VERBOSE'] != 'false') if options[:verbose].nil?
@@ -80,9 +79,8 @@ module RSpec
   end
 end
 
-desc 'Run RSpec examples.'
+desc 'Run RSpec examples and store failing tests in file.'
 RSpec::Core::RakeTask.new('rspec-rerun:run') do |t, args|
-  t.pattern = args[:pattern] if args[:pattern]
   t.fail_on_error = false
   t.verbose = false if args[:verbose] == false
   t.rspec_opts = RSpec::Rerun::Tasks.rspec_options(args)
@@ -91,14 +89,14 @@ end
 desc 'Re-run failed RSpec examples.'
 RSpec::Core::RakeTask.new('rspec-rerun:rerun') do |t, args|
   failing_specs = RSpec::Rerun::Tasks.failing_specs
-  t.pattern = nil
   t.fail_on_error = false
   t.verbose = false if args[:verbose] == false
-  t.rspec_opts =  RSpec::Rerun::Tasks.rspec_options(args, failing_specs.join(' '))
+  ENV['SPEC'] = failing_specs.join(' ')
+  t.rspec_opts =  RSpec::Rerun::Tasks.rspec_options(args)
 end
 
-desc 'Run RSpec code examples.'
-task 'rspec-rerun:spec' do |_t, args|
+desc 'Run RSpec examples and rerun failing ones.'
+task 'rspec-rerun:run_and_rerun' do |_t, args|
   parsed_args = RSpec::Rerun::Tasks.parse_args(args)
   retry_count = (parsed_args[:retry_count] || 1).to_i
 
@@ -116,6 +114,5 @@ task 'rspec-rerun:spec' do |_t, args|
 
   unless $?.success?
     $stderr.puts RSpec::Rerun::Tasks.failure_message
-    fail "#{failed_count} failure#{failed_count == 1 ? '' : 's'}"
   end
 end
