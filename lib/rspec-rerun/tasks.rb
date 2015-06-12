@@ -31,10 +31,10 @@ module RSpec
 
           # Handle if opts is just a retry_count integer
           options = if options.is_a? Hash
-            options
-          else
-            { retry_count: options }
-          end
+                      options
+                    else
+                      { retry_count: options }
+                    end
 
           # Parse environment variables
           options[:pattern] ||= ENV['RSPEC_RERUN_PATTERN'] if ENV['RSPEC_RERUN_PATTERN']
@@ -55,6 +55,10 @@ module RSpec
         end
 
         def rerun(args)
+          Rake::Task['rspec-rerun:rerun'].execute(args)
+        end
+
+        def run(args)
           Rake::Task['rspec-rerun:run'].execute(args)
         end
 
@@ -63,11 +67,11 @@ module RSpec
         def dot_rspec_options
           dot_rspec_file = ['.rspec', File.expand_path('~/.rspec')].detect { |f| File.exist?(f) }
           options = if dot_rspec_file
-            file_contents = File.read(dot_rspec_file)
-            file_contents.split(/\n+/).map(&:shellsplit).flatten
-          else
-            []
-          end
+                      file_contents = File.read(dot_rspec_file)
+                      file_contents.split(/\n+/).map(&:shellsplit).flatten
+                    else
+                      []
+                    end
           options.concat ['--format', 'progress'] unless options.include?('--format')
           options
         end
@@ -87,8 +91,7 @@ end
 desc 'Re-run failed RSpec examples.'
 RSpec::Core::RakeTask.new('rspec-rerun:rerun') do |t, args|
   failing_specs = RSpec::Rerun::Tasks.failing_specs
-
-  t.pattern = args[:pattern] if args[:pattern]
+  t.pattern = nil
   t.fail_on_error = false
   t.verbose = false if args[:verbose] == false
   t.rspec_opts =  RSpec::Rerun::Tasks.rspec_options(args, failing_specs.join(' '))
@@ -101,7 +104,7 @@ task 'rspec-rerun:spec' do |_t, args|
 
   fail 'retry count must be >= 1' if retry_count <= 0
   FileUtils.rm_f RSpec::Rerun::Formatter::FILENAME
-  RSpec::Rerun::Tasks.rerun(parsed_args)
+  RSpec::Rerun::Tasks.run(parsed_args)
 
   until $?.success? || retry_count == 0
     retry_count -= 1
